@@ -1,21 +1,20 @@
-# $pip freeze > requirements.txt
-# $pip install -r requirements.txt
-
 from letit.settings import DEFAULT_API_SERVER
 from letit.resources.micropost import MicropostResource
 from letit.resources.job import JobResource
+from letit.resources.blog import BlogResource
 import requests
+
 
 class LetIt:
     """
-    Client for the LetIt API.
+    Cliente para a API LetIt.
 
     Args:
-        api_token: Your API token. Generate one at https://letit.com/settings/developer
-        base_url: Base URL for the API. Defaults to the standard LetIt API server.
+        api_token: Seu token de API. Gere em https://letit.com/settings/developer
+        base_url: URL base da API. Padrão: servidor LetIt.
 
     Example:
-        client = LetIt(api_token="your_token_here")
+        client = LetIt(api_token="seu_token_aqui")
     """
 
     def __init__(
@@ -29,6 +28,7 @@ class LetIt:
 
         self.micropost = MicropostResource(self)
         self.job = JobResource(self)
+        self.blog = BlogResource(self)
 
     def _request(self, method: str, path: str, **kwargs) -> requests.Response:
         url = f"{self.base_url}{path}"

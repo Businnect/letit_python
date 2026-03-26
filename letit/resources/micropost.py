@@ -2,15 +2,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 
-# import sys
-# import os
-# sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 from letit.schemas.micropost import PostType
-from letit.schemas.common import CreatedWithPublicIdAndLinkResponse
+from letit.schemas.common import CreatedWithPublicIdAndLinkResponse, VoteResponse
 
 if TYPE_CHECKING:
     from ..client import LetIt
+
 
 class MicropostResource:
     def __init__(self, client: "LetIt"):
@@ -26,39 +23,25 @@ class MicropostResource:
         parent_micropost_comment_public_id: Optional[str] = None,
         allow_comments: bool = True,
         is_draft: bool = False,
-        file: Optional[tuple] = None,  # ("filename.png", open(..., "rb"), "image/png")
+        file: Optional[tuple] = None,
     ) -> CreatedWithPublicIdAndLinkResponse:
         """
-        A client creates a micropost.
+        Cria um micropost (texto, mídia ou reply).
 
         Args:
-            body: The content of the post.
-            title: Required for original posts.
-            post_type: "TEXT" or "MEDIA". Defaults to "TEXT".
-            community_name: Optional community to post in.
-            parent_micropost_public_id: For replies.
-            parent_micropost_comment_public_id: For nested replies.
-            allow_comments: Whether comments are allowed. Defaults to True.
-            is_draft: Save as draft. Defaults to False.
-            file: Tuple of (filename, file_object, mime_type) for MEDIA posts.
+            body: Conteúdo do post.
+            title: Obrigatório para posts originais.
+            post_type: "TEXT" ou "MEDIA". Padrão: TEXT.
+            community_name: Comunidade onde postar (opcional).
+            parent_micropost_public_id: Para replies a um post.
+            parent_micropost_comment_public_id: Para replies aninhados.
+            allow_comments: Se permite comentários. Padrão: True.
+            is_draft: Salvar como rascunho. Padrão: False.
+            file: Tuple (filename, file_object, mime_type) para posts MEDIA.
 
         Returns:
-            MicropostResponse with public_id and link.
-
-        Example:
-            # Text post
-            post = client.micropost.create(title="Hello", body="World")
-
-            # Media post
-            with open("photo.png", "rb") as f:
-                post = client.micropost.create(
-                    title="My photo",
-                    body="Check this out",
-                    post_type="MEDIA",
-                    file=("photo.png", f, "image/png"),
-                )
+            CreatedWithPublicIdAndLinkResponse com public_id e link.
         """
-
         fields = {
             "body": body,
             "post_type": post_type,
@@ -75,7 +58,7 @@ class MicropostResource:
         if parent_micropost_comment_public_id:
             fields["parent_micropost_comment_public_id"] = parent_micropost_comment_public_id
         if file:
-            fields["file"] = file  # tuple: ("filename.png", open(...), "image/png")
+            fields["file"] = file
 
         m = MultipartEncoder(fields=fields)
 
@@ -87,3 +70,36 @@ class MicropostResource:
         )
 
         return CreatedWithPublicIdAndLinkResponse(**response.json())
+
+    def client_delete_micropost(self, public_id: str) -> None:
+        """
+        Deleta um micropost pelo public_id.
+
+        Args:
+            public_id: ID público do post a ser deletado.
+
+        Returns:
+            None (204 No Content em caso de sucesso).
+        """
+        self._client._request(
+            "DELETE",
+            "/api/v1/client/micropost",
+            json={"public_id": public_id},
+        )
+
+    def client_vote_micropost(self, public_id: str) -> VoteResponse:
+        """
+        Vota ou remove o voto de um micropost (toggle).
+
+        Args:
+            public_id: ID público do post.
+
+        Returns:
+            VoteResponse com user_voted (bool).
+        """
+        response = self._client._request(
+            "PATCH",
+            "/api/v1/client/micropost/vote",
+            json={"public_id": public_id},
+        )
+        return VoteResponse(**response.json())

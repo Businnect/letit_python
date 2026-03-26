@@ -1,41 +1,26 @@
-# letit/resources/job.py
 from __future__ import annotations
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional
 from requests_toolbelt.multipart.encoder import MultipartEncoder
-
-# import sys
-# import os
-# sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from letit.schemas.job import JobCategory, JobExperienceLevel, JobLocation, JobType, UserJobCreatedByUserResponse
 
 if TYPE_CHECKING:
-    from ..client import Letit
-
-
-@dataclass
-class JobResponse:
-    slug: str
-
-    @classmethod
-    def from_dict(cls, data: dict) -> "JobResponse":
-        return cls(slug=data["slug"])
+    from ..client import LetIt
 
 
 class JobResource:
-    def __init__(self, client: "Letit"):
+    def __init__(self, client: "LetIt"):
         self._client = client
 
     def client_create_user_job_with_company(
         self,
         company_name: str,
         company_description: str,
-        company_logo: tuple,  # ("logo.png", open(..., "rb"), "image/png")
         company_website: str,
         job_title: str,
         job_description: str,
         job_how_to_apply: str,
+        company_logo: Optional[tuple] = None,
         company_location: Optional[str] = None,
         job_location: JobLocation = JobLocation.REMOTE,
         job_type: JobType = JobType.FULLTIME,
@@ -47,41 +32,29 @@ class JobResource:
         job_skills: Optional[str] = None,
     ) -> UserJobCreatedByUserResponse:
         """
-        Create a job post with a company.
+        Cria uma vaga de emprego com empresa.
 
         Args:
-            company_name: Name of the company.
-            company_description: Description of the company.
-            company_logo: Tuple of (filename, file_object, mime_type). Optional.
-            company_website: Company website URL.
-            job_title: Title of the job.
-            job_description: Full job description.
-            job_how_to_apply: URL or instructions to apply.
-            company_location: Optional company location.
-            job_location: Defaults to JobLocation.REMOTE.
-            job_type: Defaults to JobType.FULLTIME.
-            job_category: Defaults to JobCategory.PROGRAMMING.
-            job_experience_level: Defaults to JobExperienceLevel.ALL.
-            job_minimum_salary: Optional minimum salary.
-            job_maximum_salary: Optional maximum salary.
-            job_pay_in_cryptocurrency: Defaults to False.
-            job_skills: Comma-separated skills string.
+            company_name: Nome da empresa.
+            company_description: Descrição da empresa.
+            company_website: Site da empresa.
+            job_title: Título da vaga.
+            job_description: Descrição completa da vaga.
+            job_how_to_apply: URL ou instruções para candidatura.
+            company_logo: Tuple (filename, file_object, mime_type). Opcional.
+            company_location: Localização da empresa (opcional).
+            job_location: REMOTE, ONSITE ou HYBRID. Padrão: REMOTE.
+            job_type: FULLTIME, PARTTIME, CONTRACT, FREELANCE, INTERNSHIP. Padrão: FULLTIME.
+            job_category: Categoria da vaga. Padrão: PROGRAMMING.
+            job_experience_level: Nível de experiência. Padrão: ALL.
+            job_minimum_salary: Salário mínimo (opcional).
+            job_maximum_salary: Salário máximo (opcional).
+            job_pay_in_cryptocurrency: Pagamento em cripto. Padrão: False.
+            job_skills: Skills separadas por vírgula (opcional).
 
         Returns:
-            UserJobCreatedByUserResponse with slug.
-
-        Example:
-            job = client.job.client_create_user_job_with_company(
-                company_name="LetIt",
-                company_description="We build things.",
-                company_website="https://letit.com",
-                job_title="Rust Engineer",
-                job_description="Build backend services.",
-                job_how_to_apply="https://letit.com/careers",
-                job_skills="Rust, SQL, Docker",
-            )
+            UserJobCreatedByUserResponse com slug.
         """
-        
         fields = {
             "company_name": company_name,
             "company_description": company_description,
@@ -94,9 +67,10 @@ class JobResource:
             "job_category": job_category,
             "job_experience_level": job_experience_level,
             "job_pay_in_cryptocurrency": str(job_pay_in_cryptocurrency).lower(),
-            "company_logo": company_logo,
         }
 
+        if company_logo:
+            fields["company_logo"] = company_logo
         if company_location:
             fields["company_location"] = company_location
         if job_minimum_salary is not None:
@@ -116,3 +90,19 @@ class JobResource:
         )
 
         return UserJobCreatedByUserResponse(**response.json())
+
+    def client_delete_job(self, slug: str) -> None:
+        """
+        Deleta uma vaga de emprego pelo slug.
+
+        Args:
+            slug: Identificador único da vaga.
+
+        Returns:
+            None (204 No Content em caso de sucesso).
+        """
+        self._client._request(
+            "DELETE",
+            "/api/v1/client/job",
+            json={"slug": slug},
+        )
